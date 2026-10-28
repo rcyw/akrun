@@ -99,6 +99,10 @@ uv run python tools/standalone.py stop
 
 Stop verifies recorded container identities, data mounts and empty SDK inventory, then removes this task's node, registry and network. Data, images and evidence remain available. Shared resources are preserved.
 
+## Repeat the acceptance controls
+
+After preparing the owned standalone and images, `uv run python tools/acceptance.py static` runs gold/bad/empty controls. The `model`, `recovery`, and `cancel` phases exercise the real Claude flow, explicit disconnect boundary, and model-free cancellation. The helper keeps a four-attempt model ledger and refuses a duplicate model episode. Use the ordinary CLI to inspect or resume existing state.
+
 ## Boundaries and provenance
 
 The v1 catalog supports Claude Code/static-candidate, the synthetic Git task and its verifier. Kova, other agents, large benchmark suites and checkpoint/restore are outside this release. Egress defaults to blocked, with model traffic through the reverse tunnel.
