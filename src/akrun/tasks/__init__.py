@@ -1,0 +1,1 @@
+"""Task qualification contracts."""
