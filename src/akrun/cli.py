@@ -19,7 +19,7 @@ from akrun.store import EpisodeStore
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description=__doc__)
+    result = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     result.add_argument("--state-dir", type=Path, default=Path(".akrun"))
     result.add_argument("--model-upstream-url", default="https://api.deepseek.com/anthropic")
     result.add_argument("--model-credential-env", default="DEEPSEEK_API_KEY")
