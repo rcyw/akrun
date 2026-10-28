@@ -94,14 +94,14 @@ def empty_inventory() -> None:
         raise RuntimeError("task-owned node still has SDK allocations")
 
 
-def static_controls() -> None:
+def static_controls(prefix: str = "control") -> None:
     summary = {}
     for label, candidate, expected in [
         ("gold", "gold.patch", 0),
         ("bad", "known-bad.patch", 1),
         ("empty", "empty.patch", 1),
     ]:
-        episode_id = f"control-{label}-v1"
+        episode_id = f"{prefix}-{label}-v1"
         path = resolve(episode_id, candidate=candidate)
         command(["qualify", str(path)], f"{episode_id}-qualify")
         command(["run", str(path)], f"{episode_id}-run", expected=expected)
@@ -166,6 +166,9 @@ def model_control(episode_id: str, *, disconnect: bool) -> None:
             "episode_id": episode_id,
             "started_at": datetime.now(UTC).isoformat(),
             "model": "deepseek-flash",
+            "source_head": subprocess.check_output(
+                ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True
+            ).strip(),
             "deadline_seconds": 600,
             "disconnect": disconnect,
         }
@@ -244,8 +247,7 @@ def disconnect_worker(episode_id: str) -> int:
     return 2
 
 
-def cancellation_control() -> None:
-    episode_id = "cancel-control-v1"
+def cancellation_control(episode_id: str = "cancel-control-v1") -> None:
     path = resolve(episode_id, candidate="gold.patch")
     episode = resolved_episode_from_dict(json.loads(path.read_text()))
     store = EpisodeStore(STATE)
@@ -315,9 +317,9 @@ def main() -> int:
     args = parser.parse_args()
     configure()
     if args.phase == "static":
-        static_controls()
+        static_controls(args.episode_id or "control")
     elif args.phase == "cancel":
-        cancellation_control()
+        cancellation_control(args.episode_id or "cancel-control-v1")
     elif args.phase == "disconnect-worker":
         return disconnect_worker(args.episode_id)
     else:

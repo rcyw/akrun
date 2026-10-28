@@ -135,7 +135,7 @@ class CandidateSpec:
 
 @dataclass(frozen=True, slots=True)
 class SandboxBinding:
-    """One explicit stage binding to an immutable AKernel Environment contract."""
+    """One stage binding to an immutable task image and public SDK runtime."""
 
     image: str
     platform: str
@@ -296,7 +296,7 @@ class ExecutionRef:
 
 @dataclass(frozen=True, slots=True)
 class Artifact:
-    """One AKernel sealed output downloaded and verified by the SDK."""
+    """One application-validated output downloaded through the public SDK."""
 
     name: str
     path: str

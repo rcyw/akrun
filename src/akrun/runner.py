@@ -174,35 +174,57 @@ class EpisodeRunner:
         return result
 
     def _bind(self, episode_id: str, role: str, execution: ExecutionRef) -> None:
+        cancelled = False
         with self.store.lock(episode_id):
             record = self._record(episode_id)
+            existing = getattr(record, role)
+            if existing is not None and (
+                existing.stage_id != execution.stage_id
+                or existing.sandbox_name != execution.sandbox_name
+                or (existing.sandbox_id and existing.sandbox_id != execution.sandbox_id)
+            ):
+                raise ContractError("execution identity changed")
             phase = (
                 EpisodePhase.INFERENCE_RUNNING
                 if role == "inference"
                 else EpisodePhase.VERIFICATION_RUNNING
             )
-            if record.phase != phase or record.cancel_requested:
-                raise RecoveryRequiredError("stage cancelled before dispatch")
-            existing = getattr(record, role)
-            if existing is not None and (
-                existing.stage_id != execution.stage_id
-                or (existing.sandbox_id and existing.sandbox_id != execution.sandbox_id)
-            ):
-                raise ContractError("execution identity changed")
-            if (
-                role == "verification"
-                and record.inference is not None
-                and (
-                    record.inference.sandbox_name == execution.sandbox_name
-                    or (
-                        execution.sandbox_id and record.inference.sandbox_id == execution.sandbox_id
+            if record.cancel_requested:
+                # A cancelled create can return after deletion was acknowledged.
+                # Publish its late identity and retire that exact owned allocation.
+                if not execution.sandbox_id:
+                    raise RecoveryRequiredError("stage cancelled before creation")
+                setattr(record, role, execution)
+                record.cleanup[execution.stage_id] = "pending"
+                record.phase = EpisodePhase.CANCELLING
+                self.store.save(record)
+                cancelled = True
+            elif record.phase != phase:
+                raise RecoveryRequiredError("stage no longer accepts execution binding")
+            else:
+                if (
+                    role == "verification"
+                    and record.inference is not None
+                    and (
+                        record.inference.sandbox_name == execution.sandbox_name
+                        or (
+                            execution.sandbox_id
+                            and record.inference.sandbox_id == execution.sandbox_id
+                        )
                     )
-                )
-            ):
-                raise ContractError("verification must use a fresh Sandbox")
-            setattr(record, role, execution)
-            record.cleanup.setdefault(execution.stage_id, "pending")
-            self.store.save(record)
+                ):
+                    raise ContractError("verification must use a fresh Sandbox")
+                setattr(record, role, execution)
+                record.cleanup.setdefault(execution.stage_id, "pending")
+                self.store.save(record)
+        if cancelled:
+            self._release(episode_id, execution)
+            with self.store.lock(episode_id):
+                record = self._record(episode_id)
+                if all(value == "released" for value in record.cleanup.values()):
+                    record.phase, record.completed_at = EpisodePhase.CANCELLED, _now()
+                    self.store.save(record)
+            raise RecoveryRequiredError("late-created Sandbox retired after cancellation")
 
     def _require_stage(self, episode_id: str, role: str, execution: ExecutionRef) -> EpisodeRecord:
         record = self._record(episode_id)
@@ -310,6 +332,10 @@ class EpisodeRunner:
             return record
 
     def _failure(self, episode_id: str, error: BaseException) -> None:
+        if isinstance(error, KeyboardInterrupt):
+            with suppress(InfrastructureError):
+                self.cancel(episode_id)
+            return
         with self.store.lock(episode_id):
             record = self._record(episode_id)
             if record.phase in {

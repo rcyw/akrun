@@ -53,6 +53,8 @@ class Backend:
         self.fail_cleanup = False
         self.verdict = True
         self.on_inference = None
+        self.on_created = None
+        self.on_qualification_created = None
 
     def execute(self, plan, *, artifact_dir, on_bound, model=None):
         stage_id = str(len(self.calls) + 1)
@@ -62,6 +64,10 @@ class Backend:
         self.calls.append((role, plan))
         ref = ExecutionRef(stage_id, f"name-{stage_id}")
         on_bound(ref)
+        if role == "inference" and self.on_created is not None:
+            self.on_created()
+        if role == "other" and self.on_qualification_created is not None:
+            self.on_qualification_created()
         ref = replace(ref, sandbox_id=f"sandbox-{stage_id}", launch_intent=True, command_pid=42)
         on_bound(ref)
         if role == "inference" and self.on_inference is not None:
@@ -212,3 +218,42 @@ def test_public_json_schemas_match_published_artifacts(tmp_path):
         jsonschema.validate(
             json.loads(path.read_text()), json.loads((root / f"{name}.schema.json").read_text())
         )
+
+
+def test_late_create_after_cancel_is_retired_and_remains_cancelled(tmp_path):
+    runner, backend, store = setup(tmp_path)
+    backend.on_created = lambda: runner.cancel("test")
+    with pytest.raises(RecoveryRequiredError, match="late-created"):
+        runner.run(episode())
+    record = store.load("test")
+    assert record.phase == EpisodePhase.CANCELLED
+    assert record.inference.sandbox_id == "sandbox-3"
+    assert record.cleanup["3"] == "released"
+    assert backend.deleted.count("name-3") == 2
+    assert len(backend.calls) == 3
+
+
+def test_keyboard_interrupt_is_recorded_as_cancellation(tmp_path):
+    runner, backend, store = setup(tmp_path)
+
+    def interrupt():
+        raise KeyboardInterrupt
+
+    backend.on_inference = interrupt
+    with pytest.raises(KeyboardInterrupt):
+        runner.run(episode())
+    record = store.load("test")
+    assert record.phase == EpisodePhase.CANCELLED
+    assert set(record.cleanup.values()) == {"released"}
+
+
+def test_late_qualification_binding_preserves_cleanup_identity(tmp_path):
+    runner, backend, store = setup(tmp_path)
+    backend.on_qualification_created = lambda: runner.cancel("test")
+    with pytest.raises(RecoveryRequiredError):
+        runner.run(episode())
+    record = store.load("test")
+    assert record.phase == EpisodePhase.CANCELLING
+    assert record.qualifications[0].sandbox_id == "sandbox-1"
+    assert record.cleanup["1"] == "pending"
+    assert runner.cancel("test").phase == EpisodePhase.CANCELLED

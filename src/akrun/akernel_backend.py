@@ -96,7 +96,12 @@ class AkernelBackend:
                 reverse_tunnel=tunnel,
             )
             execution = replace(execution, sandbox_id=sandbox.id)
-            on_bound(execution)
+            try:
+                on_bound(execution)
+            except BaseException:
+                # Failure to publish a newly bound identity must not orphan it.
+                self._delete(execution.sandbox_name)
+                raise
             sandbox.files.make_dir(_ROOT)
             identity = {
                 "stage_id": execution.stage_id,
@@ -268,7 +273,26 @@ class AkernelBackend:
             artifacts.append(Artifact(path, str(destination), size, digest, expected.media_type))
         if code == 0 and seen != set(declared):
             raise ContractError("required stage output missing")
-        return StageResult(execution, code, str(raw.get("diagnostic_code", "")), tuple(artifacts))
+        logs: dict[str, str] = {}
+        for stream in ("stdout", "stderr"):
+            remote = f"{_ROOT}/{stream}.log"
+            if sandbox.files.exists(remote):
+                size = sandbox.files.get_info(remote).size
+                if not 0 <= size <= 16 << 20:
+                    raise ContractError("stage diagnostic log exceeds byte bound")
+                destination = artifact_dir / f"stage-{stream}.log"
+                sandbox.files.copy_to_local(remote, str(destination))
+                if destination.stat().st_size != size:
+                    raise ContractError("stage diagnostic log length changed")
+                logs[stream] = str(destination)
+        return StageResult(
+            execution,
+            code,
+            str(raw.get("diagnostic_code", "")),
+            tuple(artifacts),
+            stdout_path=logs.get("stdout", ""),
+            stderr_path=logs.get("stderr", ""),
+        )
 
     def inspect(self, execution: ExecutionRef) -> dict[str, Any]:
         sandbox = self._open(execution)
@@ -282,10 +306,22 @@ class AkernelBackend:
             sandbox.kill()
 
     def cancel(self, execution: ExecutionRef) -> None:
+        if execution.sandbox_name != f"akr-{execution.stage_id}":
+            raise RecoveryRequiredError("sandbox_name_provenance_mismatch")
         if execution.sandbox_id and execution.sandbox_id not in self._inventory():
             return
-        # Exact task-generated names were persisted before creation; deletion also
-        # resolves a lost creation response, when no physical ID was returned.
+        if execution.sandbox_id:
+            sandbox = self._factory(name=execution.sandbox_name, detached=True)
+            try:
+                if sandbox.id != execution.sandbox_id:
+                    raise RecoveryRequiredError("sandbox_identity_changed_before_delete")
+                if sandbox.files.exists(f"{_ROOT}/identity.json"):
+                    identity = json.loads(sandbox.files.read(f"{_ROOT}/identity.json"))
+                    if identity.get("stage_id") != execution.stage_id:
+                        raise RecoveryRequiredError("stage_identity_changed_before_delete")
+            finally:
+                sandbox.kill()
+        # An exact task-generated name also resolves a lost creation response.
         self._delete(execution.sandbox_name)
         if execution.sandbox_id and execution.sandbox_id in self._inventory():
             raise InfrastructureError("sandbox_deletion_unconfirmed")

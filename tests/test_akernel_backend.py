@@ -176,3 +176,43 @@ def test_cancel_is_idempotent_and_confirms_sdk_inventory(tmp_path):
     backend.cancel(sdk.snapshots[-1])
     backend.cancel(sdk.snapshots[-1])
     assert not sdk.inventory()
+
+
+def test_rejected_identity_publication_does_not_orphan_sandbox(tmp_path):
+    plan, sdk, backend = setup()
+
+    def reject_bound(execution):
+        if execution.sandbox_id:
+            raise RecoveryRequiredError("cancel arrived during create")
+
+    with pytest.raises(RecoveryRequiredError):
+        backend.execute(plan, artifact_dir=tmp_path, on_bound=reject_bound)
+    assert not sdk.inventory()
+    assert sdk.start_calls == 0
+
+
+def test_cancel_refuses_another_stage_identity(tmp_path):
+    plan, sdk, backend = setup()
+    backend.execute(plan, artifact_dir=tmp_path, on_bound=sdk.snapshots.append)
+    sandbox = next(iter(sdk.sandboxes.values()))
+    identity = json.loads(sandbox.files.read("/run/akrun/identity.json"))
+    identity["stage_id"] = "another-task"
+    sandbox.files.write("/run/akrun/identity.json", json.dumps(identity))
+    with pytest.raises(RecoveryRequiredError, match="identity_changed"):
+        backend.cancel(sdk.snapshots[-1])
+    assert len(sdk.inventory()) == 1
+
+
+def test_terminal_failure_retains_bounded_diagnostic_logs(tmp_path):
+    plan, sdk, backend = setup()
+    sdk.lose_response = True
+    with pytest.raises(RecoveryRequiredError):
+        backend.execute(plan, artifact_dir=tmp_path, on_bound=sdk.snapshots.append)
+    sandbox = next(iter(sdk.sandboxes.values()))
+    result = json.loads(sandbox.files.read("/run/akrun/result.json"))
+    result["exit_code"] = 7
+    sandbox.files.write("/run/akrun/result.json", json.dumps(result))
+    sandbox.files.write("/run/akrun/stderr.log", b"command failed")
+    recovered = backend.recover(sdk.snapshots[-1], plan, artifact_dir=tmp_path)
+    assert recovered.exit_code == 7
+    assert Path(recovered.stderr_path).read_bytes() == b"command failed"

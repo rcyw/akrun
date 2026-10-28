@@ -1,32 +1,15 @@
-# Synthetic code-task image
+# Synthetic code task
 
-This directory is one complete `axrun.synthetic.code-task@1` fixture. Its task seed is the OCI image built by the adjacent `Dockerfile`; Axrun does not reconstruct `/workspace` by uploading dataset files at Run time.
+This is the repository-owned `akrun.synthetic.code-task@1` fixture. Its immutable task image contains Python, Git and the clean `/workspace` repository at commit `69b31ae17c45d731fd5b6fa43660c05aea4a9027`. The fixed build-author metadata is retained from the imported seed so this commit stays reproducible. Runtime does not reconstruct the task workspace by uploading source files.
 
-The image owns:
-
-- Python 3 and Git;
-- the repository at `/workspace`;
-- the clean base commit declared by `row.json`.
-- the repository's own `.gitignore`, including Python bytecode and cache exclusions.
-
-Workspace ignore policy belongs to the immutable task seed. Harnesses continue to export every tracked or untracked change recognized by Git and do not embed language- or benchmark-specific artifact filters.
-
-Build the task image for the target Axern node. The mirror arguments are optional build-time transport choices and are not embedded as private infrastructure defaults:
+Build the image, then load it through the task-owned local registry described in the root README:
 
 ```bash
 docker buildx build --platform linux/amd64 --load \
-  -t axrun-synthetic-code-task:1 \
-  fixtures/synthetic/code-task-v1
+  -t akrun-local/synthetic-code-task:1 fixtures/synthetic/code-task-v1
+uv run python tools/standalone.py load-images
 ```
 
-For a CLI-managed local Axern node, import it with `axern local image load axrun-synthetic-code-task:1`. During joint development against Axern's source-managed Compose stack, use that checkout's source import path instead:
+Use the returned digest for `akrun resolve-synthetic --task-image`. The inference and verification Sandboxes may use the same immutable image; their writable filesystems remain independent. Claude Code is supplied separately as a read-only runtime image mounted at `/__claude_code` only during inference.
 
-```bash
-IMAGE=axrun-synthetic-code-task:1 make -C /path/to/axern local-compose-image-import
-```
-
-Create the Axern Environment from the canonical digest returned by the import, not from an unpinned mutable tag.
-
-The Dockerfile supports `linux/amd64` and `linux/arm64`; publish a multi-platform index or import the matching single-platform build. Both inference and verification Environments must be created from the imported or registry-resolved digest of this same image. Each stage still gets a fresh Run and Allocation. Claude Code is not installed in this task image; its independently built rootfs is attached read-only at `/__claude_code` only for the Claude inference Run.
-
-The deterministic gold and known-bad paths run on either supported task-image platform. Claude Code `2.1.205` remains a separate mount with matching `linux/amd64` and `linux/arm64` rootfs variants. Production and benchmark acceptance use amd64; arm64 is available for local source-cluster development. The task image, Claude rootfs, and Axern node must use the same platform.
+The prompt asks the agent to fix `add_one`. The two repository tests cover positive and negative values. `gold.patch` passes, `known-bad.patch` fails, and `empty.patch` leaves the original failure. These deterministic controls use the same candidate publication and fresh verification path as real Claude Code. Only Linux/amd64 is included in this task's acceptance record; the image definitions also retain their original arm64 build path.

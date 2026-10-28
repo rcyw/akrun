@@ -25,6 +25,8 @@ def test_resolve_cli_roundtrips_closed_public_contract_without_sdk_connection(tm
                 "registry/task@sha256:" + "a" * 64,
                 "--claude-mount-image",
                 "registry/claude@sha256:" + "b" * 64,
+                "--model",
+                "deepseek-flash",
                 "--output",
                 str(output),
             ]

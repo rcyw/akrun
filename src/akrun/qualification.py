@@ -11,6 +11,7 @@ from akrun.backend import ExecutionBackend
 from akrun.catalog import adapters
 from akrun.errors import ContractError, RecoveryRequiredError
 from akrun.models import (
+    EpisodePhase,
     ExecutionRef,
     ImageMountSpec,
     OutputSpec,
@@ -41,6 +42,13 @@ def qualify(
             record = store.load(episode.episode_id)
             assert record is not None
             if record.cancel_requested:
+                if execution.sandbox_id:
+                    existing = {ref.stage_id: ref for ref in record.qualifications}
+                    existing[execution.stage_id] = execution
+                    record.qualifications = tuple(existing.values())
+                    record.cleanup[execution.stage_id] = "pending"
+                    record.phase = EpisodePhase.CANCELLING
+                    store.save(record)
                 raise RecoveryRequiredError("qualification cancelled")
             existing = {ref.stage_id: ref for ref in record.qualifications}
             existing[execution.stage_id] = execution
