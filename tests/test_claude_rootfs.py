@@ -84,11 +84,11 @@ def test_claude_rootfs_dockerfile_keeps_visible_abi_and_uses_copied_scripts() ->
         "ARG NODE_VERSION=22.23.2",
         "ARG NODE_DIST_BASE_URL=https://nodejs.org/dist",
         "ARG NPM_REGISTRY_URL=https://registry.npmjs.org",
-        "COPY artifacts.lock.json /opt/axrun-build/artifacts.lock.json",
-        "COPY scripts/resolve-architecture.py /opt/axrun-build/scripts/resolve-architecture.py",
+        "COPY artifacts.lock.json /opt/akrun-build/artifacts.lock.json",
+        "COPY scripts/resolve-architecture.py /opt/akrun-build/scripts/resolve-architecture.py",
         "COPY scripts/claude-launcher.sh /usr/local/bin/claude",
-        'io.axrun.claude-code.mount-target="/__claude_code"',
-        'io.axrun.claude-code.entry="/__claude_code/usr/local/bin/claude"',
+        'io.akrun.claude-code.mount-target="/__claude_code"',
+        'io.akrun.claude-code.entry="/__claude_code/usr/local/bin/claude"',
     }
     assert all(value in dockerfile for value in required)
     assert "ADD " not in dockerfile

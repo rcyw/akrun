@@ -36,7 +36,7 @@ if [[ $# -eq 2 ]]; then
   )
 fi
 
-readonly image="axrun-claude-code-rootfs:${claude_version}-${architecture}"
+readonly image="akrun-claude-code-rootfs:${claude_version}-${architecture}"
 
 docker buildx build \
   --platform "linux/${architecture}" \

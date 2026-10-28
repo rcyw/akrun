@@ -1,1 +1,0 @@
-"""Runtime-free qualification fixture."""

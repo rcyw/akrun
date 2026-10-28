@@ -1,39 +1,33 @@
 [project]
-name = "axrun"
+name = "akrun"
 version = "0.1.0.dev0"
-description = "Thin, recoverable agent evaluation runner built on Axern"
+description = "Thin, recoverable agent evaluation runner built on AKernel"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "Apache-2.0"
-authors = [{ name = "cofy-x" }]
+license = "MIT"
+authors = [{ name = "wayne" }]
 dependencies = [
-    "axern-sdk==0.12.1",
+    "akernel-sdk==0.2.0rc3",
 ]
 
 [project.urls]
-Homepage = "https://github.com/cofy-x/axrun"
-Repository = "https://github.com/cofy-x/axrun"
-Issues = "https://github.com/cofy-x/axrun/issues"
+Homepage = "https://github.com/rcyw/akrun"
+Repository = "https://github.com/rcyw/akrun"
+Issues = "https://github.com/rcyw/akrun/issues"
 
 [project.scripts]
-axrun = "axrun.cli:main"
-
-[project.optional-dependencies]
-kova = [
-    "kova-client==0.1.0rc9",
-]
+akrun = "akrun.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/axrun"]
+packages = ["src/akrun"]
 
 [dependency-groups]
 dev = [
     "jsonschema==4.26.0",
-    "kova-client==0.1.0rc9",
     "pyright>=1.1.405",
     "pytest>=8.3.5",
     "ruff>=0.11.0",

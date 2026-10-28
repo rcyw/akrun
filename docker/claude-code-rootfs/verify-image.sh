@@ -32,14 +32,14 @@ case "$architecture" in
     ;;
 esac
 
-readonly image="${2:-axrun-claude-code-rootfs:${claude_version}-${architecture}}"
+readonly image="${2:-akrun-claude-code-rootfs:${claude_version}-${architecture}}"
 readonly image_architecture="$(docker image inspect "$image" --format '{{.Architecture}}')"
 if [[ "$image_architecture" != "$architecture" ]]; then
   echo "image architecture mismatch: expected $architecture, got $image_architecture" >&2
   exit 1
 fi
 
-readonly rootfs_dir="$(mktemp -d "${TMPDIR:-/tmp}/axrun-claude-rootfs.XXXXXX")"
+readonly rootfs_dir="$(mktemp -d "${TMPDIR:-/tmp}/akrun-claude-rootfs.XXXXXX")"
 container_id=""
 cleanup() {
   if [[ -n "$container_id" ]]; then

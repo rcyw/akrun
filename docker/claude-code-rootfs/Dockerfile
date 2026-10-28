@@ -24,11 +24,11 @@ RUN apt-get update \
       xz-utils \
  && rm -rf /var/lib/apt/lists/*
 
-COPY artifacts.lock.json /opt/axrun-build/artifacts.lock.json
-COPY scripts/resolve-architecture.py /opt/axrun-build/scripts/resolve-architecture.py
+COPY artifacts.lock.json /opt/akrun-build/artifacts.lock.json
+COPY scripts/resolve-architecture.py /opt/akrun-build/scripts/resolve-architecture.py
 
-RUN python3 /opt/axrun-build/scripts/resolve-architecture.py \
-      /opt/axrun-build/artifacts.lock.json "$TARGETARCH" /tmp/architecture.env \
+RUN python3 /opt/akrun-build/scripts/resolve-architecture.py \
+      /opt/akrun-build/artifacts.lock.json "$TARGETARCH" /tmp/architecture.env \
       --ubuntu-base-image "$UBUNTU_BASE_IMAGE" \
       --claude-code-version "$CLAUDE_CODE_VERSION" \
       --claude-runtime-version "$CLAUDE_RUNTIME_VERSION" \
@@ -39,22 +39,22 @@ ARG NPM_REGISTRY_URL=https://registry.npmjs.org
 
 ENV PATH=/opt/claude-code/node/bin:${PATH}
 
-COPY scripts/fetch-artifacts.sh /opt/axrun-build/scripts/fetch-artifacts.sh
+COPY scripts/fetch-artifacts.sh /opt/akrun-build/scripts/fetch-artifacts.sh
 RUN NODE_DIST_BASE_URL="$NODE_DIST_BASE_URL" NPM_REGISTRY_URL="$NPM_REGISTRY_URL" \
-      /bin/bash /opt/axrun-build/scripts/fetch-artifacts.sh
+      /bin/bash /opt/akrun-build/scripts/fetch-artifacts.sh
 
-COPY scripts/patch-bun-interp.py /opt/axrun-build/scripts/patch-bun-interp.py
-COPY scripts/patch-loader.py /opt/axrun-build/scripts/patch-loader.py
-COPY scripts/prepare-loader.sh /opt/axrun-build/scripts/prepare-loader.sh
-COPY scripts/patch-elfs.sh /opt/axrun-build/scripts/patch-elfs.sh
-RUN /bin/bash /opt/axrun-build/scripts/prepare-loader.sh
-RUN /bin/bash /opt/axrun-build/scripts/patch-elfs.sh
+COPY scripts/patch-bun-interp.py /opt/akrun-build/scripts/patch-bun-interp.py
+COPY scripts/patch-loader.py /opt/akrun-build/scripts/patch-loader.py
+COPY scripts/prepare-loader.sh /opt/akrun-build/scripts/prepare-loader.sh
+COPY scripts/patch-elfs.sh /opt/akrun-build/scripts/patch-elfs.sh
+RUN /bin/bash /opt/akrun-build/scripts/prepare-loader.sh
+RUN /bin/bash /opt/akrun-build/scripts/patch-elfs.sh
 
-COPY scripts/verify-builder.sh /opt/axrun-build/scripts/verify-builder.sh
-COPY scripts/write-manifest.sh /opt/axrun-build/scripts/write-manifest.sh
-RUN /bin/bash /opt/axrun-build/scripts/verify-builder.sh
+COPY scripts/verify-builder.sh /opt/akrun-build/scripts/verify-builder.sh
+COPY scripts/write-manifest.sh /opt/akrun-build/scripts/write-manifest.sh
+RUN /bin/bash /opt/akrun-build/scripts/verify-builder.sh
 RUN UBUNTU_BASE_IMAGE="$UBUNTU_BASE_IMAGE" \
-      /bin/bash /opt/axrun-build/scripts/write-manifest.sh
+      /bin/bash /opt/akrun-build/scripts/write-manifest.sh
 
 FROM ${UBUNTU_BASE_IMAGE}
 
@@ -82,8 +82,8 @@ RUN set -eu; \
     ln -s "usr/lib/$DEB_LIB_ARCH" "/$USR_ALIAS"; \
     rm /tmp/architecture.env
 
-LABEL io.axrun.claude-code.version="$CLAUDE_CODE_VERSION" \
-      io.axrun.claude-runtime.version="$CLAUDE_RUNTIME_VERSION" \
-      io.axrun.claude-code.mount-target="/__claude_code" \
-      io.axrun.claude-code.entry="/__claude_code/usr/local/bin/claude" \
-      io.axrun.claude-code.rootfs="ubuntu-24.04"
+LABEL io.akrun.claude-code.version="$CLAUDE_CODE_VERSION" \
+      io.akrun.claude-runtime.version="$CLAUDE_RUNTIME_VERSION" \
+      io.akrun.claude-code.mount-target="/__claude_code" \
+      io.akrun.claude-code.entry="/__claude_code/usr/local/bin/claude" \
+      io.akrun.claude-code.rootfs="ubuntu-24.04"

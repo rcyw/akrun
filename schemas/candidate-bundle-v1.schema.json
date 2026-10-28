@@ -1,35 +1,94 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/cofy-x/axrun/schemas/candidate-bundle-v1.schema.json",
-  "title": "CandidateBundle v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "episode_id", "task_id", "seed_digest", "inference_run_id", "harness", "harness_version", "candidate", "candidate_version", "files", "digest"],
   "properties": {
-    "schema_version": { "const": 1 },
-    "episode_id": { "type": "string", "minLength": 1 },
-    "task_id": { "type": "string", "minLength": 1 },
-    "seed_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "inference_run_id": { "type": "string", "minLength": 1 },
-    "harness": { "type": "string", "minLength": 1 },
-    "harness_version": { "type": "string", "minLength": 1 },
-    "candidate": { "type": "string", "minLength": 1 },
-    "candidate_version": { "type": "string", "minLength": 1 },
-    "files": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/file" } },
-    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
-  },
-  "$defs": {
-    "file": {
-      "type": "object", "additionalProperties": false,
-      "required": ["role", "declared_path", "bundle_path", "size_bytes", "sha256", "media_type"],
-      "properties": {
-        "role": { "type": "string", "pattern": "^[a-z0-9_.-]+$" },
-        "declared_path": { "type": "string", "pattern": "^/" },
-        "bundle_path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+" },
-        "size_bytes": { "type": "integer", "minimum": 0 },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "media_type": { "type": "string" }
+    "schema_version": {
+      "const": 1
+    },
+    "episode_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "seed_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "inference_stage_id": {
+      "type": "string"
+    },
+    "inference_sandbox_id": {
+      "type": "string"
+    },
+    "harness": {
+      "type": "string"
+    },
+    "harness_version": {
+      "type": "string"
+    },
+    "candidate": {
+      "type": "string"
+    },
+    "candidate_version": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "declared_path": {
+            "type": "string"
+          },
+          "bundle_path": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "media_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "declared_path",
+          "bundle_path",
+          "size_bytes",
+          "sha256",
+          "media_type"
+        ]
       }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     }
-  }
+  },
+  "required": [
+    "schema_version",
+    "episode_id",
+    "task_id",
+    "seed_digest",
+    "inference_stage_id",
+    "inference_sandbox_id",
+    "harness",
+    "harness_version",
+    "candidate",
+    "candidate_version",
+    "files",
+    "digest"
+  ]
 }

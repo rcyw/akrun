@@ -28,7 +28,7 @@ jobs:
       - run: uv build
       - name: Smoke installed wheel CLI outside source tree
         run: |
-          uv venv --python 3.11 "$RUNNER_TEMP/axrun-wheel-venv"
-          uv pip install --python "$RUNNER_TEMP/axrun-wheel-venv/bin/python" dist/*.whl
+          uv venv --python 3.11 "$RUNNER_TEMP/akrun-wheel-venv"
+          uv pip install --python "$RUNNER_TEMP/akrun-wheel-venv/bin/python" dist/*.whl
           cd "$RUNNER_TEMP"
-          env -u PYTHONPATH "$RUNNER_TEMP/axrun-wheel-venv/bin/axrun" --help
+          env -u PYTHONPATH "$RUNNER_TEMP/akrun-wheel-venv/bin/akrun" --help

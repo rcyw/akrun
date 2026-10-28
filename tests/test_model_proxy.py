@@ -9,10 +9,54 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from axrun.errors import DiagnosedInfrastructureError, InfrastructureError
-from axrun.lifecycle.model_tunnel import ModelTunnelLifecycle
-from axrun.proxy.model import ModelProxy
-from axrun.proxy.protocols import AnthropicProtocol
+from akrun.errors import InfrastructureError
+from akrun.proxy.model import ModelProxy
+from akrun.proxy.protocols import AnthropicProtocol
+
+
+def test_sse_is_forwarded_before_upstream_response_finishes() -> None:
+    release = threading.Event()
+    first = b'data: {"type":"message_start"}\n\n'
+
+    class Upstream(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            self.rfile.read(int(self.headers["content-length"]))
+            self.send_response(200)
+            self.send_header("content-type", "text/event-stream")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.wfile.write(first)
+            self.wfile.flush()
+            release.wait(timeout=5)
+            self.wfile.write(b'data: {"type":"message_stop"}\n\n')
+            self.wfile.flush()
+
+        def log_message(self, *_args: object) -> None:
+            return
+
+    upstream = ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+    thread = threading.Thread(target=upstream.serve_forever, daemon=True)
+    thread.start()
+    proxy = ModelProxy(
+        upstream_url=f"http://127.0.0.1:{upstream.server_port}/anthropic",
+        credential="caller-secret",
+        protocol=AnthropicProtocol(),
+    )
+    proxy.start()
+    connection = http.client.HTTPConnection(proxy.local_target, timeout=1)
+    try:
+        connection.request("POST", "/v1/messages", body=b'{"model":"test"}')
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.read1(4096) == first
+        assert not release.is_set()
+    finally:
+        release.set()
+        connection.close()
+        proxy.stop()
+        upstream.shutdown()
+        upstream.server_close()
+        thread.join(timeout=2)
 
 
 def test_model_proxy_rejects_nonpositive_time_bounds() -> None:
@@ -69,7 +113,7 @@ def test_model_proxy_health_is_local_and_credentials_are_not_observable() -> Non
         "messages": [{"role": "user", "content": "Reply with OK."}],
         "stream": False,
     }
-    assert preflight.headers["x-api-key"] == "axrun-local-tunnel"
+    assert preflight.headers["x-api-key"] == "akrun-local-tunnel"
     proxy_host, proxy_port = proxy.local_target.split(":")
     connection = http.client.HTTPConnection(proxy_host, int(proxy_port), timeout=2)
     try:
@@ -339,51 +383,6 @@ def test_model_proxy_classifies_upstream_response_timeout() -> None:
     assert "caller-secret" not in repr(summary.as_safe_dict())
 
 
-@pytest.mark.parametrize("failed_action", ["shutdown", "server_close"])
-def test_lifecycle_retries_real_model_proxy_server_cleanup(
-    monkeypatch: pytest.MonkeyPatch, failed_action: str
-) -> None:
-    secret = "private-cleanup-exception-must-not-escape"
-    proxy = ModelProxy(
-        upstream_url="http://127.0.0.1:1",
-        credential="caller-secret",
-        protocol=AnthropicProtocol(),
-    )
-    proxy.start()
-    server, thread = proxy._server, proxy._thread
-    assert server is not None and thread is not None
-    original = getattr(server, failed_action)
-    attempts = 0
-
-    def fail_once() -> None:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise RuntimeError(secret)
-        original()
-
-    monkeypatch.setattr(server, failed_action, fail_once)
-    lifecycle = ModelTunnelLifecycle(client=object(), proxy=proxy, model="test")
-    try:
-        with pytest.raises(DiagnosedInfrastructureError) as raised:
-            lifecycle.close()
-        assert raised.value.details == {"reason_code": "model_proxy_stop_failed"}
-        assert secret not in str(raised.value) and "caller-secret" not in str(raised.value)
-        assert proxy._server is server and proxy._thread is thread
-        assert proxy._credential == ""
-        proxy.start()
-        assert proxy._server is server and proxy._thread is thread
-
-        lifecycle.close()
-        assert attempts == 2
-        assert server.socket.fileno() == -1 and not thread.is_alive()
-        assert proxy._server is None and proxy._thread is None
-        lifecycle.close()
-        assert attempts == 2
-    finally:
-        proxy.stop()
-
-
 def test_model_proxy_keeps_thread_until_bounded_join_finishes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -419,38 +418,4 @@ def test_model_proxy_keeps_thread_until_bounded_join_finishes(
         assert proxy._credential == ""
     finally:
         release.set()
-        proxy.stop()
-
-
-def test_lifecycle_closes_real_proxy_socket_when_serving_thread_never_started(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    proxy = ModelProxy(
-        upstream_url="http://127.0.0.1:1",
-        credential="caller-secret",
-        protocol=AnthropicProtocol(),
-    )
-
-    def fail_start(_thread: threading.Thread) -> None:
-        raise RuntimeError("thread creation failed")
-
-    monkeypatch.setattr(threading.Thread, "start", fail_start)
-    with pytest.raises(RuntimeError, match="thread creation failed"):
-        proxy.start()
-    server, thread = proxy._server, proxy._thread
-    assert server is not None and thread is not None and thread.ident is None
-    assert server.socket.fileno() != -1
-
-    def forbid_blocking_cleanup(*_args, **_kwargs) -> None:
-        pytest.fail("an unstarted serving thread cannot be shut down or joined")
-
-    monkeypatch.setattr(server, "shutdown", forbid_blocking_cleanup)
-    monkeypatch.setattr(thread, "join", forbid_blocking_cleanup)
-    lifecycle = ModelTunnelLifecycle(client=object(), proxy=proxy, model="test")
-    try:
-        lifecycle.close()
-        assert server.socket.fileno() == -1
-        assert proxy._server is None and proxy._thread is None and proxy._credential == ""
-        lifecycle.close()
-    finally:
         proxy.stop()

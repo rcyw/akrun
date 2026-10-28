@@ -5,7 +5,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 dockerfile="$root/Dockerfile"
 lock="$root/artifacts.lock.json"
 resolver="$root/scripts/resolve-architecture.py"
-temporary=$(mktemp -d "${TMPDIR:-/tmp}/axrun-claude-source.XXXXXX")
+temporary=$(mktemp -d "${TMPDIR:-/tmp}/akrun-claude-source.XXXXXX")
 trap 'rm -rf -- "$temporary"' EXIT
 
 base_image=ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
@@ -26,10 +26,10 @@ if python3 "$resolver" "$lock" unknown "$temporary/unknown.env" \
   exit 1
 fi
 
-grep -Fq 'COPY artifacts.lock.json /opt/axrun-build/artifacts.lock.json' "$dockerfile"
-grep -Fq 'COPY scripts/resolve-architecture.py /opt/axrun-build/scripts/resolve-architecture.py' "$dockerfile"
-grep -Fq 'io.axrun.claude-code.mount-target="/__claude_code"' "$dockerfile"
-grep -Fq 'io.axrun.claude-code.entry="/__claude_code/usr/local/bin/claude"' "$dockerfile"
+grep -Fq 'COPY artifacts.lock.json /opt/akrun-build/artifacts.lock.json' "$dockerfile"
+grep -Fq 'COPY scripts/resolve-architecture.py /opt/akrun-build/scripts/resolve-architecture.py' "$dockerfile"
+grep -Fq 'io.akrun.claude-code.mount-target="/__claude_code"' "$dockerfile"
+grep -Fq 'io.akrun.claude-code.entry="/__claude_code/usr/local/bin/claude"' "$dockerfile"
 grep -Fq 'unset LD_LIBRARY_PATH' "$root/scripts/claude-launcher.sh"
 grep -Fq 'new = b"/__claude_code/l\0"' "$root/scripts/patch-bun-interp.py"
 

@@ -8,32 +8,32 @@ from typing import Any
 
 import pytest
 
-import axrun.trajectories.bundle as bundle_module
-from axrun.errors import ContractError, InfrastructureError
-from axrun.models import (
+import akrun.trajectories.bundle as bundle_module
+from akrun.errors import ContractError, InfrastructureError
+from akrun.models import (
     Artifact,
     CandidateSpec,
-    EnvironmentBinding,
     ExecutionRef,
     HarnessSpec,
     ResolvedEpisode,
+    SandboxBinding,
     StageResult,
     TaskSpec,
     VerifierSpec,
 )
-from axrun.trajectories.adapters import ClaudeCodeTrajectoryAdapter
-from axrun.trajectories.adapters.claude_code import (
+from akrun.trajectories.adapters import ClaudeCodeTrajectoryAdapter
+from akrun.trajectories.adapters.claude_code import (
     ClaudeTrajectoryNormalizer,
     claude_stage_exit_code,
     normalize_claude_stream,
 )
-from axrun.trajectories.bundle import (
+from akrun.trajectories.bundle import (
     TrajectoryArtifact,
     load_trajectory_bundle,
     persist_trajectory_bundle,
 )
-from axrun.trajectories.policy import TrajectoryLimits
-from axrun.trajectories.schema import (
+from akrun.trajectories.policy import TrajectoryLimits
+from akrun.trajectories.schema import (
     TrajectoryContractError,
     event_from_dict,
     load_trajectory_jsonl,
@@ -225,7 +225,7 @@ def test_claude_mapping_is_deterministic_safe_and_preserves_tool_relationships(
     ]
     context = first[1]
     assert context.data == {
-        "provenance": "axrun_task_prompt",
+        "provenance": "akrun_task_prompt",
         "content": prompt.read_text(),
         "content_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
     }
@@ -454,8 +454,8 @@ def _episode(tmp_path: Path) -> ResolvedEpisode:
         "b" * 64,
         str(prompt),
         TaskSpec("git-worktree", "1", {"base_commit": "a" * 40}),
-        EnvironmentBinding("env-i", image, "linux/amd64", "/workspace"),
-        EnvironmentBinding("env-v", image, "linux/amd64", "/workspace"),
+        SandboxBinding(image, "linux/amd64", "/workspace"),
+        SandboxBinding(image, "linux/amd64", "/workspace"),
         HarnessSpec("claude-code", "2.1.205"),
         CandidateSpec("git-patch", "1"),
         VerifierSpec("synthetic-code-task", "1"),
@@ -472,7 +472,7 @@ def test_trajectory_bundle_is_atomic_content_addressed_and_detects_tampering(
 ) -> None:
     _, trajectory, usage, _ = _normalize(tmp_path / "normalized")
     result = StageResult(
-        ExecutionRef("env-i", "run-i", "alloc-i"),
+        ExecutionRef("run-i", "name-run-i", "alloc-i"),
         0,
         "",
         (
@@ -526,7 +526,7 @@ def test_trajectory_bundle_requires_both_sealed_outputs(tmp_path: Path, missing_
         _artifact("/outputs/usage.json", usage, "application/json"),
     ]
     result = StageResult(
-        ExecutionRef("env-i", "run-missing", "alloc-missing"),
+        ExecutionRef("run-missing", "name-run-missing", "alloc-missing"),
         0,
         "",
         tuple(item for item in artifacts if item.name != missing_path),
@@ -556,7 +556,7 @@ def test_trajectory_bundle_rejects_sealed_metadata_mismatch_and_source_symlink(
         "application/x-ndjson",
     )
     result = StageResult(
-        ExecutionRef("env-i", "run-mismatch", "alloc-mismatch"),
+        ExecutionRef("run-mismatch", "name-run-mismatch", "alloc-mismatch"),
         0,
         "",
         (bad_trajectory, valid_usage),
@@ -575,7 +575,7 @@ def test_trajectory_bundle_rejects_sealed_metadata_mismatch_and_source_symlink(
     link = tmp_path / "trajectory-link.jsonl"
     link.symlink_to(trajectory)
     symlink_result = StageResult(
-        ExecutionRef("env-i", "run-symlink", "alloc-symlink"),
+        ExecutionRef("run-symlink", "name-run-symlink", "alloc-symlink"),
         0,
         "",
         (
@@ -615,7 +615,7 @@ def test_trajectory_bundle_crash_before_atomic_publish_leaves_no_manifest(
 ) -> None:
     _, trajectory, usage, _ = _normalize(tmp_path / "normalized-crash")
     result = StageResult(
-        ExecutionRef("env-i", "run-crash", "alloc-crash"),
+        ExecutionRef("run-crash", "name-run-crash", "alloc-crash"),
         0,
         "",
         (
@@ -646,7 +646,7 @@ def test_trajectory_bundle_crash_before_atomic_publish_leaves_no_manifest(
 def test_claude_trajectory_adapter_builds_bundle_from_sealed_outputs(tmp_path: Path) -> None:
     events, trajectory, usage, _ = _normalize(tmp_path / "adapter")
     result = StageResult(
-        ExecutionRef("env-i", "run-i", "alloc-i"),
+        ExecutionRef("run-i", "name-run-i", "alloc-i"),
         0,
         "",
         (
@@ -657,4 +657,4 @@ def test_claude_trajectory_adapter_builds_bundle_from_sealed_outputs(tmp_path: P
     bundle = ClaudeCodeTrajectoryAdapter().build_bundle(
         _episode(tmp_path), result, destination=tmp_path / "adapter-bundles"
     )
-    assert bundle.format == "axrun.trajectory@1" and bundle.event_count == len(events)
+    assert bundle.format == "akrun.trajectory@1" and bundle.event_count == len(events)

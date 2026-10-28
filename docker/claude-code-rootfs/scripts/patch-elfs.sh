@@ -21,7 +21,7 @@ while IFS= read -r -d '' path; do
   case "$path" in
     /opt/claude-code/bin/claude-native | */"$CLAUDE_NATIVE_PACKAGE"/claude)
       size_before="$(stat -c %s "$path")"
-      python3 /opt/axrun-build/scripts/patch-bun-interp.py "$path" "$SOURCE_INTERP"
+      python3 /opt/akrun-build/scripts/patch-bun-interp.py "$path" "$SOURCE_INTERP"
       test "$(stat -c %s "$path")" = "$size_before"
       test "$(patchelf --print-interpreter "$path")" = "$loader"
       printf '%s\n' "$relative_path" >> "$executable_list"

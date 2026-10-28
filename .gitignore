@@ -9,4 +9,8 @@ build/
 *.egg-info/
 .coverage
 .env
-.axrun/
+.akrun/
+
+artifacts/
+.env.*
+!.env.example

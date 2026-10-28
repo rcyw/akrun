@@ -1,8 +1,8 @@
 # Claude Code 2.1.205 rootfs mount
 
-This directory is Axrun's self-contained build source for the read-only Claude Code rootfs mounted at `/__claude_code`. It does not depend on another checkout and it is not a task image: the task image still owns Git, shells, language toolchains, tests, and the writable workspace.
+This directory is Akrun's self-contained build source for the read-only Claude Code rootfs mounted at `/__claude_code`. It does not depend on another checkout and it is not a task image: the task image still owns Git, shells, language toolchains, tests, and the writable workspace.
 
-The runtime is fixed to Claude Code `2.1.205`, runtime identity `2.1.205-20260812-234142`, and Node.js `22.23.2`. One Dockerfile builds `linux/amd64` and `linux/arm64` with a closed `TARGETARCH` mapping; any other architecture fails. The Ubuntu base image, common Claude package, platform-native Claude package, and Node archive are checksum-pinned. The amd64 build remains the benchmark and production canonical platform. The arm64 build exists for local development and E2E against an arm64 Axern source Compose node.
+The runtime is fixed to Claude Code `2.1.205`, runtime identity `2.1.205-20260812-234142`, and Node.js `22.23.2`. One Dockerfile builds `linux/amd64` and `linux/arm64` with a closed `TARGETARCH` mapping; any other architecture fails. The Ubuntu base image, common Claude package, platform-native Claude package, and Node archive are checksum-pinned. The amd64 build remains the benchmark and production canonical platform. The arm64 build exists for local development and E2E against an arm64 AKernel source Compose node.
 
 The build definition is split by responsibility:
 
@@ -28,7 +28,7 @@ Official public origins are the default. When they are slow, `--mirror` explicit
 ./docker/claude-code-rootfs/build-local.sh arm64 --mirror
 ```
 
-The emitted tags are `axrun-claude-code-rootfs:2.1.205-amd64` and `axrun-claude-code-rootfs:2.1.205-arm64`. The script can be invoked from any working directory and rejects unknown architectures or options.
+The emitted tags are `akrun-claude-code-rootfs:2.1.205-amd64` and `akrun-claude-code-rootfs:2.1.205-arm64`. The script can be invoked from any working directory and rejects unknown architectures or options.
 
 Run the static source verification before a build:
 

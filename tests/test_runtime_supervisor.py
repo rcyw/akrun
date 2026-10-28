@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from axrun.errors import ContractError
-from axrun.fixtures.claude.runtime_supervisor import supervise
-from axrun.progress.schema import progress_snapshot_from_bytes, runtime_progress_from_bytes
-from axrun.trajectories.schema import TrajectoryContractError
+from akrun.errors import ContractError
+from akrun.fixtures.claude.runtime_supervisor import supervise
+from akrun.progress.schema import progress_snapshot_from_bytes, runtime_progress_from_bytes
+from akrun.trajectories.schema import TrajectoryContractError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "claude-code-2.1.205"
 STREAM_FIXTURE = (
@@ -25,7 +25,7 @@ STREAM_FIXTURE = (
 
 
 def test_allocation_fixture_scripts_remain_python_3_10_compatible() -> None:
-    fixtures = Path(__file__).parents[1] / "src" / "axrun" / "fixtures"
+    fixtures = Path(__file__).parents[1] / "src" / "akrun" / "fixtures"
     for script in fixtures.rglob("*.py"):
         source = script.read_text(encoding="utf-8")
         assert "from datetime import UTC" not in source
@@ -86,7 +86,7 @@ def test_supervisor_incrementally_publishes_safe_progress(
         "RAW-THINKING-MARKER-MUST-DISAPPEAR",
         "RAW-SIGNATURE-MARKER-MUST-DISAPPEAR",
         "CREDENTIAL-HEADER-MARKER-MUST-DISAPPEAR",
-        "axrun-local-tunnel",
+        "akrun-local-tunnel",
     ):
         assert marker not in safe_payload
 

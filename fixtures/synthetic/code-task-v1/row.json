@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "dataset_identity": "axrun.synthetic.code-task",
+  "dataset_identity": "akrun.synthetic.code-task",
   "dataset_version": "1",
   "task_id": "add-one",
   "base_commit": "69b31ae17c45d731fd5b6fa43660c05aea4a9027",
@@ -8,7 +8,7 @@
   "task_image": {
     "dockerfile": "Dockerfile",
     "platforms": ["linux/amd64", "linux/arm64"],
-    "reference": "axrun-synthetic-code-task:1",
+    "reference": "akrun-synthetic-code-task:1",
     "sources": [
       {
         "path": "repository/.gitignore",
